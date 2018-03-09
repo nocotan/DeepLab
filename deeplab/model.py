@@ -201,7 +201,7 @@ class ResNet_Refine(nn.Module):
         x = self.layer4(x)
         x = self.layer5(x)
 
-        return x     
+        return x
 
 class ResNet(nn.Module):
     def __init__(self, block, layers, num_classes):
@@ -265,7 +265,7 @@ class ResNet(nn.Module):
 class MS_Deeplab(nn.Module):
     def __init__(self,block,num_classes):
         super(MS_Deeplab,self).__init__()
-        self.Scale = ResNet(block,[3, 4, 23, 3],num_classes)   #changed to fix #4 
+        self.Scale = ResNet(block,[3, 4, 23, 3],num_classes)   #changed to fix #4
 
     def forward(self,x):
         output = self.Scale(x) # for original scale
