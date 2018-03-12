@@ -3,21 +3,14 @@ import torch.nn.functional as F
 import torch.nn as nn
 from torch.autograd import Variable
 
-class CrossEntropy2d(nn.Module):
 
+class CrossEntropy2d(nn.Module):
     def __init__(self, size_average=True, ignore_label=255):
         super(CrossEntropy2d, self).__init__()
         self.size_average = size_average
         self.ignore_label = ignore_label
 
     def forward(self, predict, target, weight=None):
-        """
-            Args:
-                predict:(n, c, h, w)
-                target:(n, h, w)
-                weight (Tensor, optional): a manual rescaling weight given to each class.
-                                           If given, has to be a Tensor of size "nclasses"
-        """
         assert not target.requires_grad
         assert predict.dim() == 4
         assert target.dim() == 3

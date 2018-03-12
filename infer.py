@@ -1,18 +1,19 @@
+import os
 import argparse
 import time
 import numpy as np
 import cv2
+import matplotlib as mpl
+mpl.use('Agg')
 
 import torch
 from torch.autograd import Variable
 from torch.utils import data
-from deeplab.model import Res_Deeplab
+from deeplab.model import Deeplab
 from deeplab.datasets import ImageDataSet
 
-import matplotlib as mpl
-mpl.use('tkagg')
 import torch.nn as nn
-IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
+IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)
 
 
 def get_iou(data_list, class_num, save_path=None):
@@ -37,7 +38,8 @@ def get_iou(data_list, class_num, save_path=None):
             f.write(str(j_list)+'\n')
             f.write(str(M)+'\n')
 
-def show_all(gt, pred):
+
+def show_all(gt, pred, index):
     import matplotlib.pyplot as plt
     from matplotlib import colors
 
@@ -58,7 +60,48 @@ def show_all(gt, pred):
     ax2.set_title('pred')
     ax2.imshow(pred, cmap=cmap, norm=norm)
 
-    plt.show()
+    # plt.show()
+    plt.savefig("outputs/result/result" + str(index) + ".png")
+
+
+def get_rt_and_lb(rt, lb, output):
+    diff_rt = 1e+9
+    diff_lb = 1e+9
+    res_rt = None
+    res_lb = None
+    for i in range(len(output[0])):
+        xi = output[1][i]
+        yi = output[0][i]
+        diff_i_rt = abs(rt[0] - xi) + abs(rt[1] - yi)
+        diff_i_lb = abs(lb[0] - xi) + abs(lb[1] - yi)
+        if diff_i_rt < diff_rt:
+            diff_rt = diff_i_rt
+            res_rt = (xi, yi)
+        if diff_i_lb < diff_lb:
+            diff_lb = diff_i_lb
+            res_lb = (xi, yi)
+
+    return res_rt, res_lb
+
+
+def get_corner(output):
+    top = output[0].min()
+    left = output[1].min()
+    bottom = output[0].max()
+    right = output[1].max()
+
+    return (left, top), (right, top), (left, bottom), (right, bottom)
+
+
+def show_circle(corner, fname, name, index):
+    print(fname)
+    img = cv2.imread(fname)
+    # print(img.shape)
+    for i in range(4):
+        cv2.circle(img, corner[i], 15, (0, 0, 255, 10))
+    cv2.imwrite("outputs/"+name+".jpg", img)
+    # cv2.imwrite("outputs/"+"%04d" % index + ".jpg", img)
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -69,9 +112,9 @@ def main():
     parser.add_argument("--num-classes", type=int, default=2)
     parser.add_argument("--gpu", type=int, default=0,
                         help="choose gpu device.")
-    args =  parser.parse_args()
+    args = parser.parse_args()
 
-    model = Res_Deeplab(num_classes=args.num_classes)
+    model = Deeplab(num_classes=args.num_classes)
 
     saved_state_dict = torch.load(args.model)
     model.load_state_dict(saved_state_dict)
@@ -89,26 +132,35 @@ def main():
 
     for index, batch in enumerate(testloader):
         if index % 100 == 0:
-            print('%d processd'%(index))
+            print('%d processd' % (index))
         image, label, size, name = batch
+        image = image.cuda()
+        label = label
         size = size[0].numpy()
 
         start = time.time()
         output = model(Variable(image, volatile=True))
         output = interp(output).cpu().data[0].numpy()
 
-        output = output[:,:size[0],:size[1]]
+        output = output[:, :size[0], :size[1]]
 
-        elapsed_time = time.time() - start
-        print ("elapsed_time:{0}".format(elapsed_time) + "[sec]")
+        gt = np.asarray(label[0].numpy()[:size[0], :size[1]], dtype=np.int)
 
-        gt = np.asarray(label[0].numpy()[:size[0],:size[1]], dtype=np.int)
-
-        output = output.transpose(1,2,0)
-        print(np.where(output>0))
+        output = output.transpose(1, 2, 0)
         output = np.asarray(np.argmax(output, axis=2), dtype=np.int)
 
-        show_all(gt, output)
+        target = np.where(output > 0)
+        corner = get_corner(target)
+        print(corner)
+        rt, lb = get_rt_and_lb(corner[1], corner[2], target)
+        corner = (corner[0], rt, lb, corner[3])
+
+        elapsed_time = time.time() - start
+        print("elapsed_time:{0}".format(elapsed_time) + "[sec]")
+
+        show_circle(corner, os.path.join(args.data_dir, "images/"+name[0]+".jpg"), name[0], index)
+
+        show_all(gt, output, index)
         data_list.append([gt.flatten(), output.flatten()])
 
     get_iou(data_list, args.num_classes)

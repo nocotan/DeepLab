@@ -1,16 +1,12 @@
-import os, sys
 import numpy as np
 
-from multiprocessing import Pool
-#import copy_reg
-import types
+
 def _pickle_method(m):
     if m.im_self is None:
         return getattr, (m.im_class, m.im_func.func_name)
     else:
         return getattr, (m.im_self, m.im_func.func_name)
 
-#copy_reg.pickle(types.MethodType, _pickle_method)
 
 class ConfusionMatrix(object):
 
@@ -48,7 +44,6 @@ class ConfusionMatrix(object):
         return accuracy/self.nclass
 
     def jaccard(self):
-        jaccard = 0.0
         jaccard_perclass = []
         for i in range(self.nclass):
             if not self.M[i, i] == 0:
@@ -61,39 +56,6 @@ class ConfusionMatrix(object):
         m = np.zeros((self.nclass, self.nclass))
         assert(len(gt) == len(pred))
         for i in range(len(gt)):
-            if gt[i] < self.nclass: #and pred[i] < self.nclass:
+            if gt[i] < self.nclass:
                 m[gt[i], pred[i]] += 1.0
         return m
-
-
-if __name__ == '__main__':
-    args = parse_args()
-
-    m_list = []
-    data_list = []
-    test_ids = [i.strip() for i in open(args.test_ids) if not i.strip() == '']
-    for index, img_id in enumerate(test_ids):
-        if index % 100 == 0:
-            print('%d processd'%(index))
-        pred_img_path = os.path.join(args.pred_dir, img_id+'.png')
-        gt_img_path = os.path.join(args.gt_dir, img_id+'.png')
-        pred = cv2.imread(pred_img_path, cv2.IMREAD_GRAYSCALE)
-        gt = cv2.imread(gt_img_path, cv2.IMREAD_GRAYSCALE)
-        # show_all(gt, pred)
-        data_list.append([gt.flatten(), pred.flatten()])
-
-    ConfM = ConfusionMatrix(args.class_num)
-    f = ConfM.generateM
-    pool = Pool()
-    m_list = pool.map(f, data_list)
-    pool.close()
-    pool.join()
-
-    for m in m_list:
-        ConfM.addM(m)
-
-    aveJ, j_list, M = ConfM.jaccard()
-    with open(args.save_path, 'w') as f:
-        f.write('meanIOU: ' + str(aveJ) + '\n')
-        f.write(str(j_list)+'\n')
-        f.write(str(M)+'\n')
