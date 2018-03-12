@@ -1,34 +1,33 @@
 import torch.nn as nn
-import torch
-import numpy as np
-affine_par = True
 
 
 class Bottleneck(nn.Module):
     expansion = 4
 
-    def __init__(self, inplanes, planes, stride=1, dilation=1, downsample=None):
+    def __init__(self, inplanes, planes, stride=1, dilation=1, ds=None):
         super(Bottleneck, self).__init__()
 
-        self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, stride=stride, bias=False)
-        self.bn1 = nn.BatchNorm2d(planes, affine=affine_par)
+        self.conv1 = nn.Conv2d(inplanes, planes,
+                               kernel_size=1, stride=stride, bias=False)
+        self.bn1 = nn.BatchNorm2d(planes, affine=True)
         for i in self.bn1.parameters():
             i.requires_grad = False
 
         padding = dilation
+
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1,
                                padding=padding, bias=False, dilation=dilation)
-        self.bn2 = nn.BatchNorm2d(planes, affine=affine_par)
+        self.bn2 = nn.BatchNorm2d(planes, affine=True)
         for i in self.bn2.parameters():
             i.requires_grad = False
 
         self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, bias=False)
-        self.bn3 = nn.BatchNorm2d(planes * 4, affine=affine_par)
+        self.bn3 = nn.BatchNorm2d(planes * 4, affine=True)
         for i in self.bn3.parameters():
             i.requires_grad = False
 
         self.relu = nn.ReLU(inplace=True)
-        self.downsample = downsample
+        self.ds = ds
         self.stride = stride
 
     def forward(self, x):
@@ -45,8 +44,8 @@ class Bottleneck(nn.Module):
         out = self.conv3(out)
         out = self.bn3(out)
 
-        if self.downsample is not None:
-            residual = self.downsample(x)
+        if self.ds is not None:
+            residual = self.ds(x)
 
         out += residual
         out = self.relu(out)
@@ -77,10 +76,14 @@ class Classifier_Module(nn.Module):
 class Residual_Covolution(nn.Module):
     def __init__(self, icol, ocol, num_classes):
         super(Residual_Covolution, self).__init__()
-        self.conv1 = nn.Conv2d(icol, ocol, kernel_size=3, stride=1, padding=12, dilation=12, bias=True)
-        self.conv2 = nn.Conv2d(ocol, num_classes, kernel_size=3, stride=1, padding=12, dilation=12, bias=True)
-        self.conv3 = nn.Conv2d(num_classes, ocol, kernel_size=1, stride=1, padding=0, dilation=1, bias=True)
-        self.conv4 = nn.Conv2d(ocol, icol, kernel_size=1, stride=1, padding=0, dilation=1, bias=True)
+        self.conv1 = nn.Conv2d(icol, ocol, kernel_size=3, stride=1, padding=12,
+                               dilation=12, bias=True)
+        self.conv2 = nn.Conv2d(ocol, num_classes, kernel_size=3, stride=1,
+                               padding=12, dilation=12, bias=True)
+        self.conv3 = nn.Conv2d(num_classes, ocol, kernel_size=1, stride=1,
+                               padding=0, dilation=1, bias=True)
+        self.conv4 = nn.Conv2d(ocol, icol, kernel_size=1, stride=1, padding=0,
+                               dilation=1, bias=True)
         self.relu = nn.ReLU(inplace=True)
 
     def forward(self, x):
@@ -100,17 +103,22 @@ class ResNet(nn.Module):
         super(ResNet, self).__init__()
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
                                bias=False)
-        self.bn1 = nn.BatchNorm2d(64, affine=affine_par)
+        self.bn1 = nn.BatchNorm2d(64, affine=True)
         for i in self.bn1.parameters():
             i.requires_grad = False
 
         self.relu = nn.ReLU(inplace=True)
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1, ceil_mode=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2,
+                                    padding=1, ceil_mode=True)
         self.layer1 = self._make_layer(block, 64, layers[0])
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=1, dilation=2)
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=1, dilation=4)
-        self.layer5 = self._make_pred_layer(Classifier_Module, [6,12,18,24],[6,12,18,24],num_classes)
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=1,
+                                       dilation=2)
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=1,
+                                       dilation=4)
+        self.layer5 = self._make_pred_layer(Classifier_Module,
+                                            [6, 12, 18, 24], [6, 12, 18, 24],
+                                            num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -120,18 +128,18 @@ class ResNet(nn.Module):
                 m.bias.data.zero_()
 
     def _make_layer(self, block, planes, blocks, stride=1, dilation=1):
-        downsample = None
+        ds = None
         if stride != 1 or self.inplanes != planes * block.expansion or dilation == 2 or dilation == 4:
-            downsample = nn.Sequential(
+            ds = nn.Sequential(
                 nn.Conv2d(self.inplanes, planes * block.expansion,
                           kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(planes * block.expansion, affine=affine_par))
+                nn.BatchNorm2d(planes * block.expansion, affine=True))
 
-        for i in downsample._modules['1'].parameters():
+        for i in ds._modules['1'].parameters():
             i.requires_grad = False
 
         layers = []
-        layers.append(block(self.inplanes, planes, stride, dilation=dilation, downsample=downsample))
+        layers.append(block(self.inplanes, planes, stride, dilation=dilation, ds=ds))
 
         self.inplanes = planes * block.expansion
         for i in range(1, blocks):
