@@ -34,7 +34,8 @@ def get_arguments():
     parser.add_argument("--random-mirror", action="store_true")
     parser.add_argument("--random-scale", action="store_true")
     parser.add_argument("--random-seed", type=int, default=1234)
-    parser.add_argument("--snapshot-dir", type=str, default="./snapshots")
+    parser.add_argument("--snapshot_dir", type=str, default="./snapshots")
+    parser.add_argument("--save_steps", type=int, default=50)
     parser.add_argument("--weight-decay", type=float, default=0.0005)
     return parser.parse_args()
 
@@ -79,8 +80,8 @@ def get_10x_lr_params(model):
             yield i
 
 
-def adjust_learning_rate(optimizer, i_iter):
-    lr = lr_poly(args.learning_rate, i_iter, args.num_steps, args.power)
+def adjust_lr(optimizer, i_iter):
+    lr = lr_poly(args.lr, i_iter, args.num_steps, args.power)
     optimizer.param_groups[0]['lr'] = lr
     optimizer.param_groups[1]['lr'] = lr * 10
 
@@ -114,8 +115,8 @@ def main():
                     batch_size=args.batch_size, shuffle=True, num_workers=5, pin_memory=False)
 
     optimizer = optim.SGD([{'params': get_1x_lr_params_NOscale(model), 'lr': args.lr},
-                {'params': get_10x_lr_params(model), 'lr': 10*args.learning_rate}],
-                lr=args.learning_rate, momentum=args.momentum,weight_decay=args.weight_decay)
+                {'params': get_10x_lr_params(model), 'lr': 10*args.lr}],
+                lr=args.lr, momentum=args.momentum,weight_decay=args.weight_decay)
     optimizer.zero_grad()
 
     interp = nn.Upsample(size=input_size, mode='bilinear')
@@ -126,7 +127,7 @@ def main():
         images = Variable(images)
 
         optimizer.zero_grad()
-        adjust_learning_rate(optimizer, i_iter)
+        adjust_lr(optimizer, i_iter)
         pred = interp(model(images))
         loss = loss_calc(pred, labels, args.gpu)
         print("Step: {}, Loss: {}".format(i_iter, float(loss.data)))
@@ -138,7 +139,7 @@ def main():
             torch.save(model.state_dict(),osp.join(args.snapshot_dir, 'model_'+str(args.num_steps)+'.pth'))
             break
 
-        if i_iter % args.save_pred_every == 0 and i_iter!=0:
+        if i_iter % args.save_steps == 0 and i_iter!=0:
             torch.save(model.state_dict(),osp.join(args.snapshot_dir, 'model_'+str(i_iter)+'.pth'))
 
     end = timeit.default_timer()

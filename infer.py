@@ -80,7 +80,7 @@ def main():
     if args.gpu >= 0:
         model.cuda(args.gpu)
 
-    testloader = data.DataLoader(ImageDataSet(args.data_dir, args.data_list, crop_size=(360, 640),
+    testloader = data.DataLoader(ImageDataSet(args.data_dir, args.data_list, crop_size=(720, 1280),
                                               mean=IMG_MEAN, scale=False, mirror=False),
                                     batch_size=1, shuffle=False, pin_memory=False)
 
