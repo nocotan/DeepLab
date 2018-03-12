@@ -53,9 +53,9 @@ class Bottleneck(nn.Module):
         return out
 
 
-class Classifier_Module(nn.Module):
+class CFM(nn.Module):
     def __init__(self, dilation_series, padding_series, num_classes):
-        super(Classifier_Module, self).__init__()
+        super(CFM, self).__init__()
 
         self.conv2d_list = nn.ModuleList()
         for dilation, padding in zip(dilation_series, padding_series):
@@ -92,7 +92,7 @@ class ResNet(nn.Module):
                                        dilation=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=1,
                                        dilation=4)
-        self.layer5 = self._make_pred_layer(Classifier_Module,
+        self.layer5 = self._make_pred_layer(CFM,
                                             [6, 12, 18, 24], [6, 12, 18, 24],
                                             num_classes)
 
