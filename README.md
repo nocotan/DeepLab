@@ -1,6 +1,14 @@
 # DeepLab
 
 DeepLab implementation in pytorch.
+DeepLabv3の方が精度は高い一方で推論時間は若干遅くなります．
+
+## Usage
+
+* datasets/train.txtに拡張子なしの画像ファイル名を列挙
+* datasets/val.txtに拡張子なしのテスト用画像ファイル名を列挙
+* datasets/imagesディレクトリにオリジナル画像を*.jpg形式で入れる
+* datasets/labelsディレクトリにラベル画像を*.png形式で入れる
 
 ## Train
 
