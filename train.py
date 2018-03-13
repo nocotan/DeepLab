@@ -9,7 +9,7 @@ import torch.optim as optim
 import torch.backends.cudnn as cudnn
 import os
 import os.path as osp
-from deeplab.model import Deeplab
+from deeplab.model import Deeplab, Deeplabv3
 from deeplab.datasets import ImageDataSet
 import time
 
@@ -19,7 +19,7 @@ IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", default=None)
 parser.add_argument("--gpu", type=int, default=0)
-parser.add_argument("--batch_size", type=int, default=10)
+parser.add_argument("--batch_size", type=int, default=6)
 parser.add_argument("--data_dir", type=str, default="./datasets")
 parser.add_argument("--data_list", type=str, default="./datasets/train.txt")
 parser.add_argument("--ignore_label", type=int, default=255)
@@ -27,13 +27,14 @@ parser.add_argument("--input_size", type=str, default="300,300")
 parser.add_argument("--lr", type=float, default=2.5e-4)
 parser.add_argument("--momentum", type=float, default=0.9)
 parser.add_argument("--num_classes", type=int, default=2)
-parser.add_argument("--num_steps", type=int, default=10000)
+parser.add_argument("--num_steps", type=int, default=500)
 parser.add_argument("--power", type=float, default=0.9)
 parser.add_argument("--random_mirror", action="store_true")
 parser.add_argument("--random_scale", action="store_true")
 parser.add_argument("--snapshot_dir", type=str, default="./snapshots")
 parser.add_argument("--save_steps", type=int, default=50)
 parser.add_argument("--weight_decay", type=float, default=0.0005)
+parser.add_argument("--v3", default="store_true")
 args = parser.parse_args()
 
 
@@ -90,7 +91,10 @@ def main():
     if args.gpu >= 0:
         cudnn.enabled = True
 
-    model = Deeplab(num_classes=args.num_classes)
+    if args.v3:
+        model = Deeplabv3(num_classes=args.num_classes)
+    else:
+        model = Deeplab(num_classes=args.num_classes)
 
     if args.model is not None:
         saved_state_dict = torch.load(args.model)
@@ -105,13 +109,19 @@ def main():
     if not os.path.exists(args.snapshot_dir):
         os.makedirs(args.snapshot_dir)
 
-    trainloader = data.DataLoader(ImageDataSet(args.data_dir, args.data_list, max_iters=args.num_steps*args.batch_size, crop_size=input_size,
-                    scale=args.random_scale, mirror=args.random_mirror, mean=IMG_MEAN),
-                    batch_size=args.batch_size, shuffle=True, num_workers=5, pin_memory=False)
+    trainloader = data.DataLoader(
+        ImageDataSet(args.data_dir, args.data_list,
+                     max_iters=args.num_steps*args.batch_size,
+                     crop_size=input_size,
+                     scale=args.random_scale,
+                     mirror=args.random_mirror, mean=IMG_MEAN),
+        batch_size=args.batch_size, shuffle=True,
+        num_workers=5, pin_memory=False)
 
-    optimizer = optim.SGD([{'params': get_1x_lr_params_NOscale(model), 'lr': args.lr},
-                {'params': get_10x_lr_params(model), 'lr': 10*args.lr}],
-                lr=args.lr, momentum=args.momentum,weight_decay=args.weight_decay)
+    optimizer = optim.SGD(
+        [{'params': get_1x_lr_params_NOscale(model), 'lr': args.lr},
+         {'params': get_10x_lr_params(model), 'lr': 10*args.lr}],
+        lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     optimizer.zero_grad()
 
     interp = nn.Upsample(size=input_size, mode='bilinear')
@@ -126,16 +136,22 @@ def main():
         adjust_lr(optimizer, i_iter)
         pred = interp(model(images))
         loss = loss_calc(pred, labels, args.gpu)
-        print("Step: {}, Loss: {}".format(i_iter, float(loss.data)))
+
+        print("Step: {}, Loss: {}".format(i_iter,
+                                          float(loss.data)))
         loss.backward()
         optimizer.step()
 
         if i_iter >= args.num_steps-1:
-            torch.save(model.state_dict(), osp.join(args.snapshot_dir, 'model_' + str(args.num_steps)+'.pth'))
+            torch.save(model.state_dict(),
+                       osp.join(args.snapshot_dir,
+                                'model_' + str(args.num_steps)+'.pth'))
             break
 
         if i_iter % args.save_steps == 0 and i_iter != 0:
-            torch.save(model.state_dict(), osp.join(args.snapshot_dir, 'model_' + str(i_iter)+'.pth'))
+            torch.save(model.state_dict(),
+                       osp.join(args.snapshot_dir,
+                                'model_' + str(i_iter)+'.pth'))
 
 
 if __name__ == '__main__':

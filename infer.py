@@ -9,7 +9,7 @@ mpl.use('Agg')
 import torch
 from torch.autograd import Variable
 from torch.utils import data
-from deeplab.model import Deeplab
+from deeplab.model import Deeplab, Deeplabv3
 from deeplab.datasets import ImageDataSet
 
 import torch.nn as nn
@@ -110,11 +110,15 @@ def main():
     parser.add_argument("--data-list", type=str, default="./datasets/val.txt")
     parser.add_argument("--ignore-label", type=int, default=255)
     parser.add_argument("--num-classes", type=int, default=2)
+    parser.add_argument("--v3", default="store_true")
     parser.add_argument("--gpu", type=int, default=0,
                         help="choose gpu device.")
     args = parser.parse_args()
 
-    model = Deeplab(num_classes=args.num_classes)
+    if args.v3:
+        model = Deeplabv3(num_classes=args.num_classes)
+    else:
+        model = Deeplab(num_classes=args.num_classes)
 
     saved_state_dict = torch.load(args.model)
     model.load_state_dict(saved_state_dict)
