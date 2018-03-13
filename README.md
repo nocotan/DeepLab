@@ -23,7 +23,8 @@ usage: train.py [-h] [--model MODEL] [--gpu GPU] [--batch_size BATCH_SIZE]
                 [--lr LR] [--momentum MOMENTUM] [--num_classes NUM_CLASSES]
                 [--num_steps NUM_STEPS] [--power POWER] [--random_mirror]
                 [--random_scale] [--snapshot_dir SNAPSHOT_DIR]
-                [--save_steps SAVE_STEPS] [--weight_decay WEIGHT_DECAY]
+                [--save_steps SAVE_STEPS] [--weight_decay WEIGHT_DECAY] [--v3]
+                [--distributed]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -44,6 +45,8 @@ optional arguments:
   --snapshot_dir SNAPSHOT_DIR
   --save_steps SAVE_STEPS
   --weight_decay WEIGHT_DECAY
+  --v3
+  --distributed
 ```
 
 ## Infer
@@ -51,7 +54,7 @@ optional arguments:
 ```bash
 usage: infer.py [-h] [--model MODEL] [--data-dir DATA_DIR]
                 [--data-list DATA_LIST] [--ignore-label IGNORE_LABEL]
-                [--num-classes NUM_CLASSES] [--gpu GPU]
+                [--num-classes NUM_CLASSES] [--v3] [--gpu GPU]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -60,5 +63,6 @@ optional arguments:
   --data-list DATA_LIST
   --ignore-label IGNORE_LABEL
   --num-classes NUM_CLASSES
+  --v3
   --gpu GPU             choose gpu device.
 ```
