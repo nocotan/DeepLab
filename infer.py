@@ -110,7 +110,7 @@ def main():
     parser.add_argument("--data-list", type=str, default="./datasets/val.txt")
     parser.add_argument("--ignore-label", type=int, default=255)
     parser.add_argument("--num-classes", type=int, default=2)
-    parser.add_argument("--v3", default="store_true")
+    parser.add_argument("--v3", action="store_true")
     parser.add_argument("--gpu", type=int, default=0,
                         help="choose gpu device.")
     args = parser.parse_args()
@@ -146,7 +146,7 @@ def main():
         output = model(Variable(image, volatile=True))
         output = interp(output).cpu().data[0].numpy()
 
-        output = output[:, :size[0], :size[1]]
+        #output = output[:, :size[0], :size[1]]
 
         gt = np.asarray(label[0].numpy()[:size[0], :size[1]], dtype=np.int)
 

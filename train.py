@@ -34,7 +34,8 @@ parser.add_argument("--random_scale", action="store_true")
 parser.add_argument("--snapshot_dir", type=str, default="./snapshots")
 parser.add_argument("--save_steps", type=int, default=50)
 parser.add_argument("--weight_decay", type=float, default=0.0005)
-parser.add_argument("--v3", default="store_true")
+parser.add_argument("--v3", action="store_true")
+parser.add_argument("--distributed", action="store_true")
 args = parser.parse_args()
 
 
@@ -103,7 +104,8 @@ def main():
     model.train()
 
     if args.gpu >= 0:
-        model.cuda(args.gpu)
+        model = nn.DataParallel(model).cuda()
+        # model.cuda(args.gpu)
         cudnn.benchmark = True
 
     if not os.path.exists(args.snapshot_dir):
