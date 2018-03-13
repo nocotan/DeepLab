@@ -111,6 +111,7 @@ def main():
     parser.add_argument("--ignore-label", type=int, default=255)
     parser.add_argument("--num-classes", type=int, default=2)
     parser.add_argument("--v3", action="store_true")
+    parser.add_argument("--distributed", action="store_true")
     parser.add_argument("--gpu", type=int, default=0,
                         help="choose gpu device.")
     args = parser.parse_args()
@@ -120,12 +121,16 @@ def main():
     else:
         model = Deeplab(num_classes=args.num_classes)
 
+    if args.gpu >= 0:
+        if args.distributed:
+            model = nn.DataParallel(model).cuda()
+        else:
+            model.cuda(args.gpu)
+
     saved_state_dict = torch.load(args.model)
     model.load_state_dict(saved_state_dict)
 
     model.eval()
-    if args.gpu >= 0:
-        model.cuda(args.gpu)
 
     testloader = data.DataLoader(ImageDataSet(args.data_dir, args.data_list, crop_size=(720, 1280),
                                               mean=IMG_MEAN, scale=False, mirror=False),

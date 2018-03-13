@@ -50,15 +50,23 @@ def lr_poly(base_lr, iter, max_iter, power):
     return base_lr*((1-float(iter)/max_iter)**(power))
 
 
-def get_1x_lr_params_NOscale(model):
+def get_1x_lr_params_NOscale(model, distributed=False):
     b = []
 
-    b.append(model.conv1)
-    b.append(model.bn1)
-    b.append(model.layer1)
-    b.append(model.layer2)
-    b.append(model.layer3)
-    b.append(model.layer4)
+    if distributed:
+        b.append(model.module.conv1)
+        b.append(model.module.bn1)
+        b.append(model.module.layer1)
+        b.append(model.module.layer2)
+        b.append(model.module.layer3)
+        b.append(model.module.layer4)
+    else:
+        b.append(model.conv1)
+        b.append(model.bn1)
+        b.append(model.layer1)
+        b.append(model.layer2)
+        b.append(model.layer3)
+        b.append(model.layer4)
 
     for i in range(len(b)):
         for j in b[i].modules():
@@ -69,9 +77,13 @@ def get_1x_lr_params_NOscale(model):
                     yield k
 
 
-def get_10x_lr_params(model):
+def get_10x_lr_params(model, distributed=False):
     b = []
-    b.append(model.layer5.parameters())
+
+    if distributed:
+        b.append(model.module.layer5.parameters())
+    else:
+        b.append(model.layer5.parameters())
 
     for j in range(len(b)):
         for i in b[j]:
@@ -97,16 +109,18 @@ def main():
     else:
         model = Deeplab(num_classes=args.num_classes)
 
-    if args.model is not None:
-        saved_state_dict = torch.load(args.model)
-        model.load_state_dict(saved_state_dict)
-
     model.train()
 
     if args.gpu >= 0:
-        model = nn.DataParallel(model).cuda()
-        # model.cuda(args.gpu)
+        if args.distributed:
+            model = nn.DataParallel(model).cuda()
+        else:
+            model.cuda(args.gpu)
         cudnn.benchmark = True
+
+    if args.model is not None:
+        saved_state_dict = torch.load(args.model)
+        model.load_state_dict(saved_state_dict)
 
     if not os.path.exists(args.snapshot_dir):
         os.makedirs(args.snapshot_dir)
@@ -121,8 +135,8 @@ def main():
         num_workers=5, pin_memory=False)
 
     optimizer = optim.SGD(
-        [{'params': get_1x_lr_params_NOscale(model), 'lr': args.lr},
-         {'params': get_10x_lr_params(model), 'lr': 10*args.lr}],
+        [{'params': get_1x_lr_params_NOscale(model, True), 'lr': args.lr},
+         {'params': get_10x_lr_params(model, True), 'lr': 10*args.lr}],
         lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     optimizer.zero_grad()
 
