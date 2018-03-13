@@ -1,6 +1,6 @@
 # DeepLab
 
-DeepLab implementation in pytorch.
+DeepLab implementation in pytorch.  
 DeepLabv3の方が精度は高い一方で推論時間は若干遅くなります．
 
 ## Usage
