@@ -3,6 +3,10 @@
 DeepLab implementation in pytorch.  
 DeepLabv3の方が精度は高い一方で推論時間は若干遅くなります．
 
+* v1: Semantic Image Segmentation with Deep Convolutional Nets and Fully Connected CRFs([link](https://arxiv.org/abs/1412.7062))
+* v2: DeepLab: Semantic Image Segmentation with Deep Convolutional Nets, Atrous Convolution, and Fully Connected CRFs([link](https://arxiv.org/abs/1606.00915))
+* v3: Rethinking Atrous Convolution for Semantic Image Segmentation([link](https://arxiv.org/abs/1706.05587))
+
 ## Usage
 
 * datasets/train.txtに拡張子なしの画像ファイル名を列挙
